@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Controle de Gasto</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="http://code.jquery.com/ui/1.9.0/themes/base/jquery-ui.css" rel="stylesheet" />
+	<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+	<script src="http://code.jquery.com/jquery-1.8.2.js"></script>
+	<script src="http://code.jquery.com/ui/1.9.0/jquery-ui.js"></script>
+	<script src="grafico/code/highcharts.js"></script>
+	<script src="grafico/code/highcharts-3d.js"></script>
+	<script src="grafico/code/modules/exporting.js"></script>
+</head>
+<body>
+
+<nav class="navbar navbar-inverse navbar-fixed-top">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      	<div class="navbar-form navbar-left">
+   			<input type="text" id="datepicker" class="form-control" placeholder="dd-mm-yyyy" onchange="carregaGraficos();">
+   			<button type="submit" class="btn btn-primary" >
+    	      	<span  class='glyphicon glyphicon-search'></span>
+	        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<br><br><br>
+
+<div class="container">
+   <div class="painel">
+ 	<div class="row">
+		<div id="graficoDeFluxoPorPeriodo" style="height: 320px;"></div>
+ 	</div>
+    <div class="row">
+    	<div id="graficoDeHistoricosPorHora" style="height: 250px"></div>
+	</div>
+ </div>
+</div>
+
+<div class="modal fade" id="modalHistorico" tabindex="-1" role="dialog"
+	aria-labelledby="modalHistoricoLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+				<h4 class="modal-title"><b><center>Gastos por Registro</center></b></h4>
+				<hr>
+				<div id="tabelaGastos"></div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-md btn-primary" class="btn btn-primary" data-dismiss="modal">OK</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+
+// CARREGA OS GRAFICOS AO CARREGAR A TELA
+$( window ).load(function() {
+	$("#datepicker").val(dataAtualFormatada());
+	carregaGraficos();
+});
+
+
+// FAZ A REQUISIÇÃO COM OS DADOS E CRIA A TABELA DO MODAL
+function carregaHistoricos(horas){
+	$.ajax({
+		type: "GET",
+		url: "/padrao-eletrico/historico/list/gastos/"+horas+"/"+$("#datepicker").val(),
+		success: function(data){
+			criaTabela(data);
+		}
+	});
+}
+
+// CRIA A TABELA DE HISTORICOS
+function criaTabela(dados){
+	console.log(dados);
+	var table = "";
+	$(jQuery.parseJSON(JSON.stringify(dados))).each(function() {  
+        var nomeCliente = this.nomeCliente;
+        var registro = this.registro;
+        table += '<label><i>'+nomeCliente+" - "+"Registro : "+registro+'</i></label>' +
+        		 '<br>' +
+				 '<table class="table table-hover" >' +
+			   		headerTabela() +
+			   		bodyTabela(this.historicos)+
+				 '</table>';
+	});
+
+    $("#tabelaGastos").html("");	        
+	$("#tabelaGastos").append(table);
+}
+
+//MONTA O HEADER DA TABELA DE HISTORICOS
+function headerTabela(){
+	var header = 
+	'<thead id="headerTabela">'+
+		'<tr class="success">'+
+			'<td align="center"><b>Data</b></td>'+	
+			'<td align="center"><b>Valor Medido(KWh)</b></td>'+
+			'<td align="center"><b>Tensão(V)</b></td>'+
+			'<td align="center"><b>Corrente(A)</b></td>'+
+			'<td align="center"><b>Valor Total(R$)</b></td>'+
+		'</tr>'+
+	'</thead>';
+	return header;
+}
+
+// MONTA O CORPO DA TABELA DE HISTORICOS
+function bodyTabela(historicos){
+	var body = "";
+	$(jQuery.parseJSON(JSON.stringify(historicos))).each(function() {  
+		var row = '<tr>'+
+						'<td align="center">'+this.data+'</td>'+
+						'<td align="center">'+this.valorMedido+'</td>'+
+						'<td align="center">'+this.corrente+'</td>'+
+						'<td align="center">'+this.tensao+'</td>'+
+						'<td align="center">'+this.valorTotal+'</td>'+
+				  '</tr>'
+		body += row;
+	});
+	return body;
+}
+
+// CARREGA TODOS OS GRAFICO DA TELA
+function carregaGraficos(){
+	carregaGraficoDeHistoricosPorHora();
+	carregaGraficoDeFluxoPorPeriodo();
+}
+
+//FAZ A REQUISIÇÃO PARA O SERVIDOR E CARREGA O GRÁFICO DE HISTORICOS POR HORA
+function carregaGraficoDeHistoricosPorHora(){
+	$.ajax({
+		type: "GET",
+		url: "/padrao-eletrico/historico/list/quantidade/horas/"+$("#datepicker").val(),
+		success: function(data){
+			graficoDeHistoricosPorHora(data);
+		}
+	});
+}
+
+// FAZ A REQUISIÇÃO PARA O SERVIDOR E CARREGA O GRÁFICO DE FLUXO POR PERIODO
+function carregaGraficoDeFluxoPorPeriodo(){
+	$.ajax({
+		type: "GET",
+		url: "/padrao-eletrico/historico/percentual/"+$("#datepicker").val(),
+		success: function(data){
+			graficoDeFluxoPorPeriodo(data);
+		}
+	});
+}
+
+// MONTA O GRAFICO DE HISTORICOS POR HORA
+function graficoDeHistoricosPorHora(valores){
+	Highcharts.chart('graficoDeHistoricosPorHora', {
+	    chart: {
+	        type: 'column',
+	        options3d: {
+	            enabled: true,
+	            alpha: 27,
+	            beta: -1,
+	            depth: 39,
+	            viewDistance: 25
+	        }
+	    },
+	    title: {
+	        text: ''
+	    },
+	    subtitle: {
+	        text: ''
+	    },
+	    plotOptions: {
+	        series: {
+	            cursor: 'pointer',
+	            point: {
+	                events: {
+	                    click: function () {
+	                        $('#modalHistorico').modal('show');
+	                        carregaHistoricos(this.category.replace(":00",""));
+	                    }
+	                }
+	            }
+	        }
+	    },
+	    xAxis: {
+	        categories: [
+	            '00:00', '01:00', '02:00', '03:00',
+	            '04:00', '05:00', '06:00', '07:00',
+	            '08:00', '09:00', '10:00', '11:00',
+	            '12:00', '13:00', '14:00', '15:00',
+	            '16:00', '17:00', '18:00', '19:00',
+	            '20:00', '21:00', '22:00', '23:00'
+	        ],
+	        labels: {
+	            skew3d: true,
+	            style: {
+	                fontSize: '16px'
+	            }
+	        }
+	    },
+	    yAxis: {
+	        title: {
+	            text: null
+	        }
+	    },
+	    series: [{
+	        name: 'quantidade de históricos',
+	        data: valores
+	    }]
+	});
+}
+
+// MONTA O GRAFICO DE FLUXO POR PERIODO
+function graficoDeFluxoPorPeriodo(valores){
+	var array = valores.split(",");
+	Highcharts.chart('graficoDeFluxoPorPeriodo', {
+	    chart: {
+	        type: 'pie',
+	        options3d: {
+	            enabled: true,
+	            alpha: 45,
+	            beta: 0
+	        }
+	    },
+	    title: {
+	        text: 'Fluxo de consumo por período'
+	    },
+	    tooltip: {
+	        pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
+	    },
+	    plotOptions: {
+	        pie: {
+	            allowPointSelect: true,
+	            cursor: 'pointer',
+	            depth: 35,
+	            dataLabels: {
+	                enabled: true,
+	                format: '{point.name}'
+	            }
+	        }
+	    },
+	    series: [{
+	        type: 'pie',
+	        name: 'paríodo',
+	        data: [['Tarde', parseFloat(array[0]) ], ['Manhã', parseFloat(array[1])], ['Noite', parseFloat(array[2])]] 
+	    }]
+	});
+}
+
+// PASSA O DATEPICKER PARA PORTUGÊS
+$("#datepicker").datepicker(
+		{
+			dateFormat : 'dd-mm-yy',
+			dayNames : [ 'Domingo', 'Segunda', 'Tera', 'Quarta','Quinta', 'Sexta', 'Sbado' ],
+			dayNamesMin : [ 'D', 'S', 'T', 'Q', 'Q', 'S', 'S', 'D' ],
+			dayNamesShort : [ 'Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex',	'Sb', 'Dom' ],
+			monthNames : [ 'Janeiro', 'Fevereiro', 'Maro', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro',
+					'Outubro', 'Novembro', 'Dezembro' ],
+			monthNamesShort : [ 'Jan', 'Fev', 'Mar', 'Abr', 'Mai','Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez' ],
+			nextText : 'Prximo',
+			prevText : 'Anterior'
+});
+
+// FORMATA DATA ATUAL PARA DD-MM-YYYY
+function dataAtualFormatada(){
+    var data = new Date();
+    var dia = data.getDate();
+    var mes = data.getMonth()+1;
+    var ano = data.getFullYear();
+
+    if (dia.toString().length == 1) dia = "0" + dia;
+    if (mes.toString().length == 1) mes = "0" + mes;
+    return dia + "-" + mes + "-" + ano;
+}
+
+
+</script>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+
+</body>
+</html>

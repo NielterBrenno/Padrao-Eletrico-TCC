@@ -1,0 +1,82 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<title>Gasto diário</title>
+
+<style type="text/css">
+#container, #sliders {
+    min-width: 310px; 
+    max-width: 800px;
+    margin: 0 auto;
+}
+#container {
+    height: 400px; 
+}
+</style>
+
+</head>
+<body>
+	
+<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+<script src="grafico/code/highcharts.js"></script>
+<script src="grafico/code/highcharts-3d.js"></script>
+<script src="grafico/code/modules/exporting.js"></script>
+
+
+<div id="container" style="height: 350px"></div>
+
+
+<script type="text/javascript">
+
+Highcharts.chart('container', {
+    chart: {
+        type: 'column',
+        options3d: {
+            enabled: true,
+            alpha: 27,
+            beta: -1,
+            depth: 39,
+            viewDistance: 25
+        }
+    },
+    title: {
+        text: 'Gasto por hora'
+    },
+    subtitle: {
+        text: ''
+    },
+    plotOptions: {
+        column: {
+            depth: 25
+        }
+    },
+    xAxis: {
+        categories: [
+            '00:00', '01:00', '02:00', '03:00',
+            '04:00', '05:00', '06:00', '07:00',
+            '08:00', '09:00', '10:00', '11:00',
+            '12:00', '13:00', '14:00', '15:00',
+            '16:00', '17:00', '18:00', '19:00',
+            '20:00', '21:00', '22:00', '23:00'
+        ],
+        labels: {
+            skew3d: true,
+            style: {
+                fontSize: '16px'
+            }
+        }
+    },
+    yAxis: {
+        title: {
+            text: null
+        }
+    },
+    series: [{
+        name: 'Gasto',
+        data: [2, 3, null, 4, 0, 5, 1, 4, 6, 3,4,5,6,4,3,4,5,6,6,4,6,3,2,4]
+    }]
+});
+		</script>
+	</body>
+</html>
